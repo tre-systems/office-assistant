@@ -1,10 +1,64 @@
 # Office Assistant
 
+[![CI](https://github.com/tre-systems/office-assistant/actions/workflows/ci.yml/badge.svg)](https://github.com/tre-systems/office-assistant/actions/workflows/ci.yml)
+![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)
+![License: MIT](https://img.shields.io/badge/license-MIT-green)
+
 ![Office Assistant Screenshot](screenshot.png)
 
 Manage Office 365 calendars by chatting in plain English. Just type what you need -- **"What's on my calendar today?"**, **"Schedule a meeting with Alice tomorrow at 2pm"**, **"Find a time that works for everyone"** -- and the assistant handles the rest.
 
 Built for executive assistants and anyone who manages busy calendars, Office Assistant connects to Microsoft 365 and lets you create events, check availability, book rooms, manage other people's calendars, and more -- all through a simple chat interface.
+
+---
+
+## How it works
+
+Office Assistant is a [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) server in Python. An MCP client such as Claude Code connects to it over stdio; the server exposes typed calendar tools that call the Microsoft Graph API on your behalf.
+
+- **MCP server** -- FastMCP (official MCP Python SDK, 1.x line) with `@mcp.tool()` functions and lifespan-managed auth
+- **Auth** -- MSAL device-code flow (public client, no stored secret); tokens cached owner-only at `~/.office-assistant/`
+- **Graph client** -- typed async httpx client with retry/backoff, pagination, and auth-failure recovery
+- **Quality** -- 179 tests (respx-mocked Graph calls, 80% coverage gate), mypy strict, ruff
+
+| Tool | What it does |
+|------|--------------|
+| `list_events` | Read a calendar (yours or a shared one) over a date range |
+| `create_event` | Create meetings, with a Teams link by default for work accounts |
+| `update_event` / `cancel_event` | Reschedule, edit, or cancel |
+| `respond_to_event` | Accept / tentative / decline invitations |
+| `get_free_busy` | Availability for a set of people |
+| `find_meeting_times` | Suggest slots that work for everyone |
+| `list_rooms` | Find bookable meeting rooms |
+| `list_calendars` / `get_my_profile` | Enumerate calendars, confirm the signed-in account |
+
+A typical exchange:
+
+```
+> Find 30 minutes for me and alice@example.com tomorrow afternoon,
+  then book it as "Roadmap catch-up".
+
+  find_meeting_times(attendees=["alice@example.com"], duration=30, ...)
+    -> 14:00-14:30 and 15:30-16:00 are free for both
+
+  create_event(subject="Roadmap catch-up", start="14:00", attendees=[...])
+    -> Created with a Teams link; invite sent
+
+Booked for tomorrow 2:00-2:30pm. Alice has the invite.
+```
+
+To use it from any MCP client (Claude Code's `setup.sh` does this for you -- see below), the server config is:
+
+```json
+{
+  "mcpServers": {
+    "office-assistant": {
+      "command": "uv",
+      "args": ["run", "--directory", "/path/to/office-assistant", "python", "-m", "office_assistant"]
+    }
+  }
+}
+```
 
 ---
 
@@ -153,7 +207,7 @@ You do **not** need to install Python or any other programming tools -- the setu
 Open a terminal and run these three commands, one at a time. Copy each line, paste it into the terminal, and press **Enter**:
 
 ```
-git clone https://github.com/rgilks/office-assistant.git
+git clone https://github.com/tre-systems/office-assistant.git
 ```
 ```
 cd office-assistant
@@ -335,7 +389,7 @@ Type `/calendar-setup` in Claude Code -- it will check your connection and guide
 ### Development setup
 
 ```bash
-git clone https://github.com/rgilks/office-assistant.git
+git clone https://github.com/tre-systems/office-assistant.git
 cd office-assistant
 uv sync --extra dev
 ```
