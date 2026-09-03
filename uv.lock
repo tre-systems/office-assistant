@@ -801,7 +801,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "httpx", specifier = ">=0.27" },
-    { name = "mcp", extras = ["cli"], specifier = ">=1.28,<2" },
+    { name = "mcp", extras = ["cli"], specifier = ">=1.28,<3" },
     { name = "msal", specifier = ">=1.28" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0" },
     { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=4.0" },
